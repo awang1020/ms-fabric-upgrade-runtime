@@ -11,9 +11,9 @@ Notebook Microsoft Fabric pour **inventorier l'ensemble d'un tenant**, mesurer l
 | Section | Contenu |
 |---|---|
 | **0** | Paramètres, garde-fous, pagination, gestion du throttling, suivi des opérations longues |
-| **1.a** | Inventaire tenant-wide des Workspaces et de leur Runtime par défaut |
+| **1.a** | Inventaire tenant-wide des Workspaces, entonnoir de filtrage et Runtime par défaut |
 | **1.b** | Environment items : Runtime publié, Runtime en staging, publication en attente |
-| **1.c** | Notebooks et Spark Job Definitions impactés, avec résolution du Runtime effectif |
+| **1.c** | Notebooks et Spark Job Definitions, avec résolution du Runtime effectif |
 | **1.d** | Admins et Membres à prévenir, table de notification |
 | **2** | Migration des Environments puis des Workspaces, vérification après changement |
 
@@ -122,7 +122,7 @@ MAX_ADMIN_CALLS = 180          # garde-fou sous la limite de 200 appels/heure
 2. Exécutez la section **0**, puis les sections **1.a** à **1.d**.
 3. Analysez trois sorties clés :
    - `workspace_runtime_df` — répartition des Runtimes et **angles morts** d'accès ;
-   - `impacted_items_df` — notebooks et Spark Job Definitions concernés ;
+   - `items_to_change` — notebooks et Spark Job Definitions dont le Runtime changera ;
    - `notification_df` — destinataires par Workspace, et Workspaces orphelins.
 4. Prévenez les équipes **avant** toute écriture.
 5. Restreignez le périmètre à un Workspace de développement :
@@ -142,16 +142,30 @@ CONFIRMATION = "UPGRADE TO 1.3"   # doit correspondre à TARGET_RUNTIME
 
 ### Résolution du Runtime effectif
 
-Un Environment attaché à un item **écrase** le Runtime par défaut du Workspace. Le notebook applique cette priorité :
+Un Environment attaché à un item **écrase** le Runtime par défaut du Workspace. Le notebook ne classe pas les items dans des catégories : il expose le fait observé et sa provenance.
 
-| Impact | Signification |
+| Colonne | Contenu |
 |---|---|
-| `Impacte` | Le Runtime effectif est dans `SOURCE_RUNTIMES` : l'item changera de Runtime |
-| `A verifier` | Workspace à jour, mais contenant un Environment encore en Runtime source |
-| `Indetermine` | Workspace non lisible : impact inconnu tant que l'accès n'est pas obtenu |
-| `Non impacte` | Déjà sur un Runtime hors périmètre |
+| `WorkspaceRuntime` | Runtime par défaut du Workspace |
+| `AttachedEnvironmentName` | Environment attaché à l'item, si `DEEP_SCAN_NOTEBOOKS = True` |
+| `AttachedEnvironmentRuntime` | Runtime de cet Environment |
+| `EffectiveRuntime` | Runtime réellement appliqué : celui de l'Environment s'il existe, sinon celui du Workspace |
+| `RuntimeSource` | `Environment attache`, `Runtime du workspace`, ou `Inconnu (workspace non lisible)` |
 
-L'association notebook → Environment vit dans la **définition** du notebook et non dans la liste des items : elle n'est résolue que si `DEEP_SCAN_NOTEBOOKS = True`, au prix d'un appel supplémentaire par notebook.
+`items_to_change` isole les items dont `EffectiveRuntime` figure dans `SOURCE_RUNTIMES` — ce sont ceux qui changeront de Runtime.
+
+L'association notebook → Environment vit dans la **définition** du notebook et non dans la liste des items : elle n'est résolue que si `DEEP_SCAN_NOTEBOOKS = True`, au prix d'un appel supplémentaire par notebook. Sans ce scan, `EffectiveRuntime` retombe sur le Runtime du Workspace.
+
+### Lire le rapport de migration
+
+Le rapport compte des **opérations**, pas des objets. Un Workspace en demande une, un Environment en demande deux :
+
+| Objet | Opérations |
+|---|---|
+| Workspace | `UpdateRuntime` |
+| Environment | `UpdateRuntime` puis `Publish` |
+
+30 Workspaces et 2 Environments produisent donc 34 opérations. La section **OBJETS EFFECTIVEMENT MIGRES** donne le décompte par objet, et le plan annonce le total d'opérations attendues avant exécution.
 
 ## Choisir la cible
 
