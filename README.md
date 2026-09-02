@@ -38,9 +38,46 @@ Conséquence pratique : la **découverte** est tenant-wide, la **lecture du Runt
 
 Trois options, du plus automatisé au plus manuel :
 
-1. **Élévation just-in-time** — `AUTO_ELEVATE = True`. Le notebook s'attribue le rôle Workspace Admin, migre, puis le retire. Nécessite `sempy.fabric.admin` et le paramètre de tenant *Service principals can access admin APIs used for updates* si vous utilisez un SPN.
+1. **Élévation just-in-time** — `AUTO_ELEVATE = True`, décrite ci-dessous.
 2. **Groupe de sécurité** — ajouter un groupe « Plateforme Data » comme Admin sur les Workspaces concernés. Préférable en gouvernance durable.
 3. **Portail d'administration** — *Workspaces* → *Access*, pour un traitement ponctuel.
+
+### Élévation just-in-time
+
+Scénario type : vous êtes déjà Admin sur 10 Workspaces, 5 autres sont en Runtime 1.2 sans que vous y ayez de rôle. Le notebook s'attribue le rôle sur ces 5, migre les 15, puis se retire des 5.
+
+La section **2** se déroule en quatre phases :
+
+| Phase | Action |
+|---|---|
+| **0** | Attribution du rôle *Admin* sur les Workspaces sans accès, attente de propagation, puis **ré-inventaire** du Runtime et des Environments devenus lisibles |
+| **1** | Migration des Environments |
+| **2** | Migration du Runtime par défaut des Workspaces |
+| **3** | Retrait des rôles, dans un bloc `finally` |
+
+L'ordre est important : le filtrage sur `AccessStatus == "Ok"` n'est appliqué **qu'après** la phase 0, sinon les Workspaces à élever seraient exclus de la migration avant même d'avoir été élevés.
+
+Garde-fous :
+
+- seuls les rôles **accordés par le notebook** sont retirés — un accès légitime préexistant n'est jamais révoqué ;
+- le retrait s'exécute dans un `finally`, donc même si la migration échoue ;
+- tout rôle resté accordé est signalé en fin de rapport sous `ATTENTION` ;
+- `ELEVATION_WAIT_S` (30 s par défaut) absorbe le délai de propagation du rôle.
+
+Prérequis :
+
+- `sempy.fabric.admin` disponible — s'appuie sur `Groups_AddUserAsAdmin` et `Groups_DeleteUserAsAdmin` ;
+- `ELEVATE_PRINCIPAL` renseigné : UPN pour un utilisateur, objectId pour un SPN ou un groupe ;
+- pour un SPN, le paramètre de tenant *Service principals can access admin APIs used for updates*.
+
+```python
+AUTO_ELEVATE           = True
+ELEVATE_PRINCIPAL      = "prenom.nom@contoso.com"
+ELEVATE_PRINCIPAL_TYPE = "User"
+REVOKE_AFTER_MIGRATION = True
+```
+
+> Chaque attribution et chaque retrait sont journalisés dans le log d'audit Fabric. L'élévation reste une opération à privilège : tracez-la et gardez la fenêtre courte.
 
 ## Prérequis
 
@@ -76,6 +113,8 @@ DEEP_SCAN_NOTEBOOKS = False    # Environment réellement attaché à chaque note
 
 MAX_ADMIN_CALLS = 180          # garde-fou sous la limite de 200 appels/heure
 ```
+
+`ELEVATION_WAIT_S` (section 2) fixe l'attente de propagation après attribution d'un rôle.
 
 ## Utilisation
 
