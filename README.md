@@ -1,5 +1,17 @@
 # Migration des Runtimes Microsoft Fabric
 
+## Version optimisée recommandée
+
+[Télécharger le notebook optimisé](./Fabric_Runtime_Migration_Optimisee.ipynb) et l’importer dans un workspace de test Fabric. Il traite le **runtime Spark par défaut du workspace**, de 1.3 vers 2.0. Le notebook historique ci-dessous reste disponible pour son analyse d’impact et ses listes de contacts.
+
+1. Lancez `MODE = 'INVENTAIRE'` (par défaut). `INVENTAIRE_TENANT = True` étend la découverte au tenant pour un Administrateur Fabric muni du scope `Tenant.Read.All` ou `Tenant.ReadWrite.All`. Un espace découvert peut néanmoins refuser la lecture Spark. La vague A ne contient pas de dépendance détectée ; la vague B nécessite des tests de compatibilité.
+2. Pour une vague approuvée, renseignez `TENANT_ATTENDU`, les GUID de `CIBLES`, les GUID de vague B dans `VALIDES` et `JOURNAL` (dossier OneLake existant et protégé, par exemple `abfss://<workspace-id>@onelake.dfs.fabric.microsoft.com/<lakehouse-id>/Files/audit`). Utilisez `MODE = 'MIGRATION'` et `CONFIRMATION = 'MIGRER 1.3 VERS 2.0'`. L’identité d’exécution doit être **Admin de chaque workspace cible** ; le notebook n’attribue aucun droit.
+3. Vérifiez le journal avant/après et les nouvelles sessions Spark. Pour revenir en arrière, utilisez `MODE = 'RESTAURATION'`, `CONFIRMATION = 'RESTAURER 2.0 VERS 1.3'`, le même `JOURNAL`, `RUN_A_RESTAURER` et les cibles explicites. Le notebook refuse la restauration si les paramètres courants diffèrent du journal. Un résultat incertain doit être réconcilié manuellement avant toute relance.
+
+Cette version ne republie pas les environnements, ne réactive pas les capacités et ne modifie pas les données. Un environnement par défaut attaché est exclu de la bascule automatique. Validez séparément les environnements, les jobs, les pipelines, les tables Delta et leurs consommateurs Power BI/Direct Lake. Ne lancez pas plusieurs vagues simultanément : l’API ne fournit pas de contrôle de concurrence documenté.
+
+## Notebook historique
+
 Notebook Fabric pour **inventorier un tenant entier**, mesurer l'impact d'un changement de Runtime Spark, prévenir les équipes concernées, migrer, puis produire un compte rendu.
 
 Runtime 1.2 est **hors support depuis le 31 mars 2026**. Ce notebook automatise le passage vers un Runtime supporté, y compris sur les Workspaces où vous n'avez aucun rôle.
