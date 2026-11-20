@@ -2,7 +2,7 @@
 
 Commencez par le [notebook optimisé](./Fabric_Runtime_Migration_Optimisee.ipynb) : il inventorie les espaces de travail **sans rien modifier**, puis permet de migrer un lot explicite et de vérifier le résultat. Il change le **runtime Spark par défaut de l’espace**, pas le runtime d’un environnement Fabric attaché à un notebook ou à un job.
 
-[Démarrage rapide](#démarrage-rapide) · [Migration](#migrer-un-lot) · [Retour arrière](#revenir-en-arrière) · [Dépannage](#dépannage) · [Notebook historique](#notebook-historique)
+[Démarrage rapide](#démarrage-rapide) · [Migration](#migrer-un-lot) · [Retour arrière](#revenir-en-arrière) · [Dépannage](#dépannage)
 
 ## Démarrage rapide
 
@@ -69,11 +69,9 @@ La restauration exige un journal de migration vérifié pour chaque cible. Elle 
 
 Le notebook ne republie pas les environnements, ne modifie pas les données et ne teste pas la compatibilité des bibliothèques. Évitez les vagues concurrentes et les changements manuels sur les mêmes cibles pendant une exécution : l’API ne fournit pas de contrôle de concurrence documenté.
 
-## Notebook historique
+## Partager une copie du notebook
 
-Le [notebook historique](./Fabric_Runtime_Migration.ipynb) reste utile pour l’analyse d’impact : inventaire détaillé des éléments Spark, segmentation et liste des contacts à prévenir. Pour cet usage, gardez `DRY_RUN = True` et `AUTO_ELEVATE = False`. Ses paramètres ne sont pas ceux du notebook optimisé ; ce dernier est la version recommandée pour une bascule ciblée avec un journal persistant.
-
-Avant de partager une copie exécutée, retirez les sorties et les métadonnées de visualisation mises en cache : elles peuvent contenir des noms, des identifiants d’espaces et, dans la version historique, des adresses de messagerie.
+Avant de partager une copie exécutée, retirez les sorties et les métadonnées de visualisation mises en cache : elles peuvent contenir des noms et des identifiants d’espaces.
 
 ## Documentation Microsoft
 
